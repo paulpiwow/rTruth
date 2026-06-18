@@ -68,7 +68,7 @@ services:
     networks: [rtruth-net]
 
   rtruth-api:
-    build: ../api
+    build: ./api
     depends_on:
       influxdb:
         condition: service_healthy
