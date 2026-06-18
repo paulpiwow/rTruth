@@ -1,0 +1,22 @@
+apiVersion: 1
+
+# Re-provision cleanly on restart so edits to this file always win.
+deleteDatasources:
+  - name: InfluxDB
+    orgId: 1
+
+datasources:
+  - name: InfluxDB
+    uid: influxdb
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: rhobot
+      defaultBucket: raw_bucket
+    secureJsonData:
+      # Supplied via the INFLUX_TOKEN env var on the grafana container.
+      token: ${INFLUX_TOKEN}
+    editable: true

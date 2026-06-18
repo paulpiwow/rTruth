@@ -1,0 +1,89 @@
+# rTruth local stack — Mosquitto, InfluxDB, Telegraf, Grafana, and the Measurement API.
+# One shared network; each service waits for its dependencies to report healthy.
+#
+#   cp .env.example .env
+#   docker compose build rtruth-api   # first time only
+#   docker compose up -d
+#
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes:
+      - ./configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: [rtruth-net]
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/broker/version' -C 1 -W 3 -i healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  influxdb:
+    image: influxdb:2.7
+    ports: ["8086:8086"]
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USER}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: rhobot
+      DOCKER_INFLUXDB_INIT_BUCKET: raw_bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - influx-data:/var/lib/influxdb2
+      - ./configs/influxdb/setup.sh:/docker-entrypoint-initdb.d/setup.sh:ro
+    networks: [rtruth-net]
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  telegraf:
+    image: telegraf:1.30
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./configs/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    environment:
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+    networks: [rtruth-net]
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports: ["3000:3000"]
+    environment:
+      # Passed through so the provisioned InfluxDB datasource can authenticate.
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
+    networks: [rtruth-net]
+
+  rtruth-api:
+    build: ../api
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports: ["8090:8090"]
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: rhobot
+      INFLUX_BUCKET: raw_bucket
+    networks: [rtruth-net, rhobot-shared]
+
+volumes:
+  influx-data:
+
+networks:
+  rtruth-net:
+  rhobot-shared:
+    external: true   # joins the existing testharness + rhobot stacks
