@@ -1,0 +1,9 @@
+# Local secrets — never commit (.env.example is the tracked template)
+.env
+.env.local
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
