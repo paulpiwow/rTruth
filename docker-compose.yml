@@ -1,30 +1,44 @@
+# rTruth local telemetry stack:  MQTT -> Telegraf -> InfluxDB 3 -> Grafana.
+#
+# Quick start:
+#   cp .env.example .env
+#   docker compose up -d
+#
+# See README.md for ports, credentials and how data flows.
+
 services:
 
   mosquitto:
     image: eclipse-mosquitto:2.0.22
-    ports: ["1883:1883"]
+    # Bind to 127.0.0.1 (IPv4) only. Docker Desktop on Windows advertises an
+    # IPv6 loopback binding ([::]) but resets connections through it, and the
+    # browser resolves `localhost` to ::1 first — so `localhost:<port>` fails
+    # with ERR_CONNECTION_RESET. Pinning to 127.0.0.1 makes `localhost` work.
+    ports: ["127.0.0.1:${MQTT_PORT:-1883}:1883"]
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
     networks: [rtruth-net]
 
   influxdb:
     image: influxdb:3.10.0-core
-    ports: ["8086:8086"]
+    # --without-auth: local dev only, no token required. Databases are
+    # auto-created on first write (Telegraf creates `raw_bucket`).
+    command: [influxdb3, serve, --without-auth]
+    ports: ["127.0.0.1:${INFLUX_PORT:-8087}:8181"]   # host 8087 -> container 8181 (8086 is used by the rhobot stack); 127.0.0.1 avoids the broken IPv6 loopback
     environment:
       INFLUXDB3_NODE_IDENTIFIER_PREFIX: rhobot
-      INFLUXDB3_OBJECT_STORE:           file
-      INFLUXDB3_DB_DIR:                 /var/lib/influxdb3
-      INFLUXDB3_ADMIN_TOKEN:            ${INFLUX_TOKEN}
-      INFLUXDB3_BUCKETS:                TestHarness_Bucket,Skid_Bucket
-    volumes: [influx-data:/var/lib/influxdb3]
-    networks: [rtruth-net, rhobot-shared]
+      INFLUXDB3_OBJECT_STORE: file
+      INFLUXDB3_DB_DIR: /var/lib/influxdb3
+    volumes:
+      - influx-data:/var/lib/influxdb3
+    networks: [rtruth-net]
 
   telegraf:
     image: telegraf:1.39.0
     depends_on: [mosquitto, influxdb]
     volumes:
-      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./configs/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
     environment:
       INFLUX_TOKEN: ${INFLUX_TOKEN}
     networks: [rtruth-net]
@@ -32,10 +46,12 @@ services:
   grafana:
     image: grafana/grafana:13.0.2
     depends_on: [influxdb]
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3003}:3000"]
+    environment:
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
       - grafana-data:/var/lib/grafana
     networks: [rtruth-net]
 
@@ -46,5 +62,3 @@ volumes:
 
 networks:
   rtruth-net:
-  rhobot-shared:
-    external: true     # joins existing testharness + rhobot stacks
