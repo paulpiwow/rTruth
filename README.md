@@ -3,7 +3,7 @@
 Local telemetry stack for the testharness/rhobot work. Data flows:
 
 ```
-devices --MQTT--> Mosquitto --> Telegraf --> InfluxDB 3 --> Grafana
+devices --MQTT--> Mosquitto --> Telegraf --> InfluxDB v2 --> Grafana
 ```
 
 ## Prerequisites
@@ -17,8 +17,9 @@ cp .env.example .env
 docker compose up -d
 ```
 
-That's it — no tokens to generate, no networks to create. InfluxDB runs with
-`--without-auth` for local dev and auto-creates its database on the first write.
+That's it — no networks to create, no manual setup. InfluxDB v2 self-provisions
+on first boot (org, bucket, and an admin token) from the env vars in
+`docker-compose.yml`; the shared dev token lives in `.env`.
 
 Check everything is running:
 
@@ -33,7 +34,7 @@ docker compose logs -f telegraf
 |-----------|--------------------------------|-----------------------------------------|
 | Grafana   | `http://localhost:3003`        | the UI — login `admin` / `admin`        |
 | Mosquitto | `localhost:1883`               | MQTT broker, anonymous access           |
-| InfluxDB  | `http://localhost:8087/health` | API only — **no web UI** (see below)    |
+| InfluxDB  | `http://localhost:8087`        | v2 web UI + API — login `admin` / `admin12345` |
 | Telegraf  | (no exposed port)              | MQTT → InfluxDB bridge                   |
 
 All host ports are overridable in `.env` (`GRAFANA_PORT`, `INFLUX_PORT`,
@@ -46,17 +47,18 @@ All host ports are overridable in `.env` (`GRAFANA_PORT`, `INFLUX_PORT`,
 > `localhost` — so `http://localhost:3003` can fail with
 > `ERR_CONNECTION_RESET`. `http://127.0.0.1:3003` always works.
 
-> **InfluxDB 3 Core has no browser UI.** Opening `http://localhost:8087` in a
-> browser gives "connection reset" / 404 — that's expected; it's a headless
-> database. Check it's alive with `http://localhost:8087/health` (returns `OK`),
-> view data in **Grafana**, or query it with the `influxdb3` CLI:
+> **InfluxDB v2 has a browser UI** at `http://localhost:8087` (login
+> `admin` / `admin12345`) where you can explore buckets and run Flux. Check it's
+> alive with `http://localhost:8087/health` (returns `{"status":"pass"}`), view
+> data in **Grafana**, or query it from the CLI (the container's `influx` CLI is
+> pre-authenticated with the admin token):
 > ```bash
-> docker compose exec influxdb influxdb3 query --database raw_bucket \
->   'SELECT * FROM raw_measurement ORDER BY time DESC LIMIT 10'
+> docker compose exec influxdb influx query --org rhobot \
+>   'from(bucket:"raw_bucket") |> range(start:-10m) |> limit(n:10)'
 > ```
 >
-> Host port **8087** (not the usual 8086) avoids clashing with other InfluxDB
-> instances on this machine.
+> Host port **8087** (not v2's usual 8086) avoids clashing with other InfluxDB
+> instances on this machine — including the rhobot stack's own Influx.
 
 ## Data flow details
 
@@ -64,7 +66,7 @@ All host ports are overridable in `.env` (`GRAFANA_PORT`, `INFLUX_PORT`,
   and writes them to the InfluxDB database **`raw_bucket`** as the
   `raw_measurement` table. Tag/field mapping lives in
   `configs/telegraf/telegraf.conf`.
-- **Grafana** is pre-provisioned with an InfluxDB (SQL) datasource and loads
+- **Grafana** is pre-provisioned with an InfluxDB (Flux) datasource and loads
   dashboards from `configs/grafana/dashboards/`.
 
 ## Producing data (the testharness)
@@ -107,9 +109,11 @@ configs/
 
 ## Notes for the team
 
-- **Auth is off** (`--without-auth`) so the stack is zero-config for everyone.
-  `INFLUX_TOKEN` in `.env` is passed to Telegraf/Grafana but not enforced; it's
-  there so we can switch auth on later without reworking the configs.
+- **Auth is on** (InfluxDB v2's default). The stack is still zero-config: v2
+  self-provisions on first boot, and `INFLUX_TOKEN` in `.env` is the shared
+  admin token Telegraf and Grafana use automatically — no per-user credentials.
+  *(This is a temporary downgrade from InfluxDB v3 so Nathan's existing v2/Flux
+  connector works unchanged; we'll move back to v3 later.)*
 - **`.env` is gitignored.** Never commit real secrets — update `.env.example`
   instead when adding new variables.
 - To wipe all data and start clean: `docker compose down -v && docker compose up -d`.

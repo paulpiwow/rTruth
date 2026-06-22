@@ -10,16 +10,15 @@ datasources:
     uid: influxdb
     type: influxdb
     access: proxy
-    url: http://influxdb:8181
+    url: http://influxdb:8086
     isDefault: true
     jsonData:
-      # InfluxDB 3 uses SQL (not Flux). "dbName" is the v3 database to query.
-      # The SQL datasource talks FlightSQL/gRPC; influx runs plaintext locally,
-      # so insecureGrpc must be true (no TLS).
-      version: SQL
-      dbName: raw_bucket
-      insecureGrpc: true
+      # InfluxDB 2.x uses Flux. The datasource authenticates with a token and
+      # needs the org plus a default bucket to scope queries.
+      version: Flux
+      organization: rhobot
+      defaultBucket: raw_bucket
     secureJsonData:
-      # Ignored while InfluxDB runs with --without-auth; kept for when auth is on.
+      # Enforced now that InfluxDB v2 runs with auth on; matches INFLUX_TOKEN.
       token: ${INFLUX_TOKEN}
     editable: true

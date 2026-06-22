@@ -22,7 +22,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "time_series",
-          "rawSql": "SELECT time, value, concat(\"siteId\", '/', \"assetId\", '/', \"tagName\") AS series FROM raw_measurement WHERE \"siteId\" LIKE '$site' AND $__timeFilter(time) ORDER BY time",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"value\")\n  |> filter(fn: (r) => r.siteId =~ /^${site:regex}$/)\n  |> map(fn: (r) => ({ _time: r._time, _value: r._value, series: r.siteId + \"/\" + r.assetId + \"/\" + r.tagName }))\n  |> group(columns: [\"series\"])\n  |> sort(columns: [\"_time\"])",
           "refId": "A"
         }
       ],
@@ -44,7 +44,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT count(DISTINCT \"assetId\") AS reporting_assets FROM raw_measurement WHERE \"siteId\" LIKE '$site' AND $__timeFilter(time)",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"value\")\n  |> filter(fn: (r) => r.siteId =~ /^${site:regex}$/)\n  |> keep(columns: [\"assetId\"])\n  |> group()\n  |> distinct(column: \"assetId\")\n  |> count()",
           "refId": "A"
         }
       ],
@@ -56,12 +56,12 @@
       "fieldConfig": { "defaults": {}, "overrides": [] },
       "gridPos": { "h": 11, "w": 24, "x": 0, "y": 11 },
       "id": 3,
-      "options": { "showHeader": true, "sortBy": [{ "displayName": "time", "desc": true }] },
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "_time", "desc": true }] },
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT time, \"siteId\", \"lineId\", \"assetId\", \"tagName\", value, unit, quality FROM raw_measurement WHERE \"siteId\" LIKE '$site' AND $__timeFilter(time) ORDER BY time DESC LIMIT 100",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and (r._field == \"value\" or r._field == \"quality\"))\n  |> filter(fn: (r) => r.siteId =~ /^${site:regex}$/)\n  |> pivot(rowKey: [\"_time\", \"siteId\", \"lineId\", \"assetId\", \"tagName\", \"unit\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"siteId\", \"lineId\", \"assetId\", \"tagName\", \"value\", \"unit\", \"quality\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 100)",
           "refId": "A"
         }
       ],
@@ -79,10 +79,9 @@
         "label": "Site",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
-        "query": { "rawSql": "SELECT DISTINCT \"siteId\" FROM raw_measurement ORDER BY \"siteId\"" },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"raw_bucket\", tag: \"siteId\")",
         "refresh": 2,
         "includeAll": true,
-        "allValue": "%",
         "multi": false,
         "current": { "text": "All", "value": "$__all" },
         "options": [],
@@ -96,6 +95,6 @@
   "timezone": "",
   "title": "rTruth — Live Site View",
   "uid": "rtruth-d1-live-site",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
