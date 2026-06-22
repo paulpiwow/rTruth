@@ -1,0 +1,93 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "min": 0, "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "red", "value": null },
+            { "color": "yellow", "value": 90 },
+            { "color": "green", "value": 99 }
+          ] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"quality\")\n  |> group()\n  |> reduce(identity: {good: 0.0, total: 0.0}, fn: (r, accumulator) => ({\n       good: accumulator.good + (if r._value == \"good\" then 1.0 else 0.0),\n       total: accumulator.total + 1.0,\n     }))\n  |> map(fn: (r) => ({ _value: if r.total > 0.0 then r.good / r.total * 100.0 else 0.0 }))",
+          "refId": "A"
+        }
+      ],
+      "title": "% good",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 18, "x": 6, "y": 0 },
+      "id": 2,
+      "options": {
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "xTickLabelRotation": 0,
+        "legend": { "showLegend": false }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"quality\")\n  |> duplicate(column: \"_value\", as: \"quality\")\n  |> group(columns: [\"quality\"])\n  |> count()\n  |> group()\n  |> rename(columns: { _value: \"count\" })\n  |> sort(columns: [\"count\"], desc: true)",
+          "refId": "A"
+        }
+      ],
+      "title": "Messages by quality grade",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "gridPos": { "h": 13, "w": 24, "x": 0, "y": 7 },
+      "id": 3,
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "bad_count", "desc": true }] },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"quality\")\n  |> filter(fn: (r) => r._value != \"good\")\n  |> group(columns: [\"siteId\", \"assetId\", \"tagName\"])\n  |> count()\n  |> group()\n  |> rename(columns: { _value: \"bad_count\" })\n  |> sort(columns: [\"bad_count\"], desc: true)",
+          "refId": "A"
+        }
+      ],
+      "title": "Non-good readings by signal (empty = all good)",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["rtruth", "quality"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "rTruth — Data Quality",
+  "uid": "rtruth-d4-data-quality",
+  "version": 1,
+  "weekStart": ""
+}

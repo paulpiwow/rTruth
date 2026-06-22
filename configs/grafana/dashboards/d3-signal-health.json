@@ -1,0 +1,76 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" } }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"value\")\n  |> map(fn: (r) => ({ r with sig: r.siteId + \"/\" + r.assetId + \"/\" + r.tagName }))\n  |> keep(columns: [\"sig\"])\n  |> group()\n  |> distinct(column: \"sig\")\n  |> count()",
+          "refId": "A"
+        }
+      ],
+      "title": "Active signals (24h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "secondsAgo" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 60 },
+                { "color": "red", "value": 300 }
+              ] } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 17, "w": 24, "x": 0, "y": 5 },
+      "id": 2,
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "secondsAgo", "desc": true }] },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"value\")\n  |> group(columns: [\"siteId\", \"assetId\", \"tagName\"])\n  |> last()\n  |> map(fn: (r) => ({ r with secondsAgo: (int(v: now()) - int(v: r._time)) / 1000000000 }))\n  |> keep(columns: [\"siteId\", \"assetId\", \"tagName\", \"_time\", \"secondsAgo\"])\n  |> group()\n  |> sort(columns: [\"secondsAgo\"], desc: true)",
+          "refId": "A"
+        }
+      ],
+      "title": "Last seen per signal — green <60s · amber <300s · red ≥300s (generic cadence)",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["rtruth", "health"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "rTruth — Signal Health",
+  "uid": "rtruth-d3-signal-health",
+  "version": 1,
+  "weekStart": ""
+}
