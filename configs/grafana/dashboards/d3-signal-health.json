@@ -21,7 +21,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT count(DISTINCT concat(\"siteId\", '/', \"assetId\", '/', \"tagName\")) AS active_signals FROM raw_measurement WHERE time > now() - interval '24 hours'",
+          "rawSql": "SELECT count(DISTINCT concat(\"siteName\", '/', \"assetName\", '/', \"tagName\")) AS active_signals FROM raw_measurement WHERE time > now() - interval '24 hours'",
           "refId": "A"
         }
       ],
@@ -54,7 +54,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT \"siteId\", \"assetId\", \"tagName\", max(time) AS last_seen, to_unixtime(now()) - to_unixtime(max(time)) AS \"secondsAgo\" FROM raw_measurement WHERE time > now() - interval '24 hours' GROUP BY \"siteId\", \"assetId\", \"tagName\" ORDER BY \"secondsAgo\" DESC",
+          "rawSql": "SELECT \"siteName\", \"assetName\", \"tagName\", max(time) AS last_seen, to_unixtime(now()) - to_unixtime(max(time)) AS \"secondsAgo\" FROM raw_measurement WHERE time > now() - interval '24 hours' GROUP BY \"siteName\", \"assetName\", \"tagName\" ORDER BY \"secondsAgo\" DESC",
           "refId": "A"
         }
       ],

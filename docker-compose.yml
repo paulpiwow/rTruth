@@ -18,7 +18,10 @@ services:
     volumes:
       - ./configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
-    networks: [rtruth-net]
+    # Also joins the shared rhobot bus so the testharness (on rhobot-shared)
+    # can publish to this broker by name (mosquitto:1883). rtruth-net keeps
+    # internal stack traffic (Telegraf -> broker) isolated.
+    networks: [rtruth-net, rhobot-shared]
 
   influxdb:
     image: influxdb:3.10.0-core
@@ -65,3 +68,8 @@ volumes:
 
 networks:
   rtruth-net:
+  # The existing shared bus created by the rhobot/testharness stacks. Declared
+  # external so this compose attaches to it instead of creating its own.
+  rhobot-shared:
+    external: true
+    name: docker_rhobot-shared

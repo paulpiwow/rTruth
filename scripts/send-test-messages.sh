@@ -8,21 +8,24 @@
 set -euo pipefail
 
 ROUNDS="${1:-10}"
+TESTCASE=1
+# Each row: siteName lineName assetName tagName measurementType unit
 ASSETS=(
-  "site1 line1 asset1 temperature degC"
-  "site1 line1 asset2 pressure bar"
-  "site1 line2 asset3 flow lpm"
-  "site2 line1 asset4 temperature degC"
+  "Site1 Line1 Asset1 x_01 CV %"
+  "Site1 Line1 Asset1 y_01 SP %"
+  "Site1 Line1 Asset1 z_01 PV degC"
+  "Site1 Line2 Asset2 z_02 PV bar"
+  "Site2 Line1 Asset3 z_03 PV degC"
 )
 
-echo "Publishing ${ROUNDS} rounds to mqtt (rhobot/testcase/...)"
+echo "Publishing ${ROUNDS} rounds to mqtt (rhobot/testharness/testcase/...)"
 for ((r = 1; r <= ROUNDS; r++)); do
   for a in "${ASSETS[@]}"; do
-    read -r site line asset tag unit <<<"$a"
+    read -r site line asset tag mtype unit <<<"$a"
     ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     value="$(awk -v s="$r" 'BEGIN{srand(); printf "%.3f", 50 + 5*sin(s/5.0) + (rand()*2-1)}')"
-    topic="rhobot/testcase/t-1024/${site}/${line}/${asset}"
-    payload="{\"timestamp\":\"${ts}\",\"source\":\"testharness\",\"testId\":\"t-1024\",\"siteId\":\"${site}\",\"lineId\":\"${line}\",\"assetId\":\"${asset}\",\"tagName\":\"${tag}\",\"measurementType\":\"process\",\"unit\":\"${unit}\",\"quality\":\"good\",\"value\":${value}}"
+    topic="rhobot/testharness/testcase/${TESTCASE}/${site}/${line}/${asset}/${tag}"
+    payload="{\"timestamp\":\"${ts}\",\"testcaseNumber\":${TESTCASE},\"siteName\":\"${site}\",\"lineName\":\"${line}\",\"assetName\":\"${asset}\",\"tagName\":\"${tag}\",\"measurementType\":\"${mtype}\",\"value\":${value},\"unit\":\"${unit}\",\"status\":\"GOOD\"}"
     docker compose exec -T mosquitto mosquitto_pub -h localhost -t "$topic" -m "$payload"
   done
   echo "round ${r}/${ROUNDS} sent"
