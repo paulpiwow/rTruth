@@ -21,21 +21,20 @@ services:
     networks: [rtruth-net]
 
   influxdb:
-    image: influxdb:2.7
-    # v2 enforces auth. On first boot it runs `setup` from the env vars below,
-    # creating the org, bucket, and an admin token (= INFLUX_TOKEN). That token
-    # is a shared dev credential the services use — NOT a per-user login.
-    # Setup only runs on an empty volume: `docker compose down -v` to re-init.
-    ports: ["127.0.0.1:${INFLUX_PORT:-8087}:8086"]   # host 8087 -> container 8086 (v2's native port; host stays 8087 to avoid the rhobot stack's Influx on 8086); 127.0.0.1 avoids the broken IPv6 loopback
+    image: influxdb:3.10.0-core
+    # --without-auth: local dev only, no token required. Databases are
+    # auto-created on first write (Telegraf creates `raw_bucket`).
+    command: [influxdb3, serve, --without-auth]
+    # Port is EXPOSED on all interfaces (no 127.0.0.1 prefix) so the rPipes
+    # connector — which runs in a SEPARATE docker stack — can reach it via
+    # host.docker.internal:8087. Each repo stays its own stack (per Nathan).
+    ports: ["${INFLUX_PORT:-8087}:8181"]   # host 8087 -> container 8181 (8086 is the rhobot stack's own Influx)
     environment:
-      DOCKER_INFLUXDB_INIT_MODE: setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: admin12345          # >=8 chars; only for the optional InfluxDB web UI on :8087
-      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-rhobot}
-      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-raw_bucket}
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+      INFLUXDB3_NODE_IDENTIFIER_PREFIX: rhobot
+      INFLUXDB3_OBJECT_STORE: file
+      INFLUXDB3_DB_DIR: /var/lib/influxdb3
     volumes:
-      - influx-data:/var/lib/influxdb2
+      - influx-data:/var/lib/influxdb3
     networks: [rtruth-net]
 
   telegraf:

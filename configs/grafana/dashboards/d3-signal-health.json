@@ -21,7 +21,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"value\")\n  |> map(fn: (r) => ({ r with sig: r.siteId + \"/\" + r.assetId + \"/\" + r.tagName }))\n  |> keep(columns: [\"sig\"])\n  |> group()\n  |> distinct(column: \"sig\")\n  |> count()",
+          "rawSql": "SELECT count(DISTINCT concat(\"siteId\", '/', \"assetId\", '/', \"tagName\")) AS active_signals FROM raw_measurement WHERE time > now() - interval '24 hours'",
           "refId": "A"
         }
       ],
@@ -54,7 +54,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "query": "from(bucket: \"raw_bucket\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"raw_measurement\" and r._field == \"value\")\n  |> group(columns: [\"siteId\", \"assetId\", \"tagName\"])\n  |> last()\n  |> map(fn: (r) => ({ r with secondsAgo: (int(v: now()) - int(v: r._time)) / 1000000000 }))\n  |> keep(columns: [\"siteId\", \"assetId\", \"tagName\", \"_time\", \"secondsAgo\"])\n  |> group()\n  |> sort(columns: [\"secondsAgo\"], desc: true)",
+          "rawSql": "SELECT \"siteId\", \"assetId\", \"tagName\", max(time) AS last_seen, to_unixtime(now()) - to_unixtime(max(time)) AS \"secondsAgo\" FROM raw_measurement WHERE time > now() - interval '24 hours' GROUP BY \"siteId\", \"assetId\", \"tagName\" ORDER BY \"secondsAgo\" DESC",
           "refId": "A"
         }
       ],
@@ -71,6 +71,6 @@
   "timezone": "",
   "title": "rTruth — Signal Health",
   "uid": "rtruth-d3-signal-health",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
