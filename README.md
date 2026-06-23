@@ -56,7 +56,8 @@ All host ports are overridable in `.env` (`GRAFANA_PORT`, `INFLUX_PORT`,
 > ```
 >
 > Host port **8087** (not the usual 8086) avoids clashing with other InfluxDB
-> instances on this machine.
+> instances on this machine, and is exposed on all interfaces so the rPipes
+> connector (a separate docker stack) can reach it via `host.docker.internal`.
 
 ## Data flow details
 
@@ -108,8 +109,11 @@ configs/
 ## Notes for the team
 
 - **Auth is off** (`--without-auth`) so the stack is zero-config for everyone.
-  `INFLUX_TOKEN` in `.env` is passed to Telegraf/Grafana but not enforced; it's
-  there so we can switch auth on later without reworking the configs.
+  `INFLUX_TOKEN` in `.env` is passed to Telegraf/Grafana but not enforced.
+- **InfluxDB's port is exposed** (host `8087`, all interfaces) so the rPipes
+  connector — which runs as a separate docker stack — can reach it at
+  `host.docker.internal:8087`. Local-dev only; lock it down before it leaves a
+  laptop.
 - **`.env` is gitignored.** Never commit real secrets — update `.env.example`
   instead when adding new variables.
 - To wipe all data and start clean: `docker compose down -v && docker compose up -d`.

@@ -1,0 +1,76 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "thresholds" } }, "overrides": [] },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "rawSql": "SELECT count(DISTINCT concat(\"siteId\", '/', \"assetId\", '/', \"tagName\")) AS active_signals FROM raw_measurement WHERE time > now() - interval '24 hours'",
+          "refId": "A"
+        }
+      ],
+      "title": "Active signals (24h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb" },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "secondsAgo" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 60 },
+                { "color": "red", "value": 300 }
+              ] } }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 17, "w": 24, "x": 0, "y": 5 },
+      "id": 2,
+      "options": { "showHeader": true, "sortBy": [{ "displayName": "secondsAgo", "desc": true }] },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb" },
+          "format": "table",
+          "rawSql": "SELECT \"siteId\", \"assetId\", \"tagName\", max(time) AS last_seen, to_unixtime(now()) - to_unixtime(max(time)) AS \"secondsAgo\" FROM raw_measurement WHERE time > now() - interval '24 hours' GROUP BY \"siteId\", \"assetId\", \"tagName\" ORDER BY \"secondsAgo\" DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Last seen per signal — green <60s · amber <300s · red ≥300s (generic cadence)",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["rtruth", "health"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "rTruth — Signal Health",
+  "uid": "rtruth-d3-signal-health",
+  "version": 2,
+  "weekStart": ""
+}
