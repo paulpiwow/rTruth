@@ -25,7 +25,10 @@ services:
     # --without-auth: local dev only, no token required. Databases are
     # auto-created on first write (Telegraf creates `raw_bucket`).
     command: [influxdb3, serve, --without-auth]
-    ports: ["127.0.0.1:${INFLUX_PORT:-8087}:8181"]   # host 8087 -> container 8181 (8086 is used by the rhobot stack); 127.0.0.1 avoids the broken IPv6 loopback
+    # Port is EXPOSED on all interfaces (no 127.0.0.1 prefix) so the rPipes
+    # connector — which runs in a SEPARATE docker stack — can reach it via
+    # host.docker.internal:8087. Each repo stays its own stack (per Nathan).
+    ports: ["${INFLUX_PORT:-8087}:8181"]   # host 8087 -> container 8181 (8086 is the rhobot stack's own Influx)
     environment:
       INFLUXDB3_NODE_IDENTIFIER_PREFIX: rhobot
       INFLUXDB3_OBJECT_STORE: file
