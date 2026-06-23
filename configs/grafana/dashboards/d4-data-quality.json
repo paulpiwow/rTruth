@@ -32,11 +32,11 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT 100.0 * sum(CASE WHEN quality = 'good' THEN 1 ELSE 0 END) / count(*) AS pct_good FROM raw_measurement WHERE quality IS NOT NULL AND $__timeFilter(time)",
+          "rawSql": "SELECT 100.0 * sum(CASE WHEN status = 'GOOD' THEN 1 ELSE 0 END) / count(*) AS pct_good FROM raw_measurement WHERE status IS NOT NULL AND $__timeFilter(time)",
           "refId": "A"
         }
       ],
-      "title": "% good",
+      "title": "% GOOD",
       "type": "stat"
     },
     {
@@ -54,11 +54,11 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT quality, count(*) AS count FROM raw_measurement WHERE quality IS NOT NULL AND $__timeFilter(time) GROUP BY quality ORDER BY count DESC",
+          "rawSql": "SELECT status, count(*) AS count FROM raw_measurement WHERE status IS NOT NULL AND $__timeFilter(time) GROUP BY status ORDER BY count DESC",
           "refId": "A"
         }
       ],
-      "title": "Messages by quality grade",
+      "title": "Messages by status grade",
       "type": "barchart"
     },
     {
@@ -71,7 +71,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT \"siteId\", \"assetId\", \"tagName\", count(*) AS bad_count FROM raw_measurement WHERE quality IS NOT NULL AND quality <> 'good' AND $__timeFilter(time) GROUP BY \"siteId\", \"assetId\", \"tagName\" ORDER BY bad_count DESC",
+          "rawSql": "SELECT \"siteName\", \"assetName\", \"tagName\", count(*) AS bad_count FROM raw_measurement WHERE status IS NOT NULL AND status <> 'GOOD' AND $__timeFilter(time) GROUP BY \"siteName\", \"assetName\", \"tagName\" ORDER BY bad_count DESC",
           "refId": "A"
         }
       ],

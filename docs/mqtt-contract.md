@@ -10,30 +10,30 @@ The mapping below is enforced by `configs/telegraf/telegraf.conf`.
 ## Topic
 
 ```
-rhobot/testcase/<testId>/<siteId>/<lineId>/<assetId>
+rhobot/testharness/testcase/<testcaseNumber>/<siteName>/<lineName>/<assetName>/<tagName>
 ```
 
-Telegraf subscribes to `rhobot/testcase/+/+/+/+` (exactly four trailing
-segments). The segments are for routing/readability; the values that actually
-get stored come from the JSON body, not the topic.
+`rhobot/testharness/testcase` is the fixed prefix. Telegraf subscribes to
+`rhobot/testharness/testcase/+/+/+/+/+` (exactly five trailing segments). The
+segments are for routing/readability; the values that actually get stored come
+from the JSON body, not the topic.
 
 ## Payload (JSON)
 
-One measurement per message:
+One measurement per message, 10 fields:
 
 ```json
 {
   "timestamp": "2026-06-22T14:30:00Z",
-  "source": "testharness",
-  "testId": "t-1024",
-  "siteId": "site1",
-  "lineId": "line1",
-  "assetId": "asset1",
-  "tagName": "temperature",
-  "measurementType": "process",
+  "testcaseNumber": 1,
+  "siteName": "Site1",
+  "lineName": "Line1",
+  "assetName": "Asset1",
+  "tagName": "x_01",
+  "measurementType": "CV",
+  "value": 42.5,
   "unit": "degC",
-  "quality": "good",
-  "value": 42.5
+  "status": "GOOD"
 }
 ```
 
@@ -42,22 +42,21 @@ One measurement per message:
 | JSON key          | Stored as        | Notes                                            |
 |-------------------|------------------|--------------------------------------------------|
 | `timestamp`       | point time       | RFC3339 / ISO-8601 (`2006-01-02T15:04:05Z07:00`) |
-| `source`          | tag              |                                                  |
-| `testId`          | tag              |                                                  |
-| `siteId`          | tag              |                                                  |
-| `lineId`          | tag              |                                                  |
-| `assetId`         | tag              |                                                  |
-| `tagName`         | tag              | the signal name, e.g. `temperature`              |
-| `measurementType` | tag              |                                                  |
+| `testcaseNumber`  | tag              | the test-case run number                         |
+| `siteName`        | tag              |                                                  |
+| `lineName`        | tag              |                                                  |
+| `assetName`       | tag              |                                                  |
+| `measurementType` | tag              | one of `CV`, `SP`, `PV`                          |
 | `unit`            | tag              |                                                  |
-| `quality`         | field (string)   |                                                  |
+| `status`          | tag              | quality flag — `GOOD` in v1                       |
+| `tagName`         | field (string)   | the signal name, e.g. `x_01`                     |
 | `value`           | field (number)   | the numeric reading                              |
 
 Everything lands in InfluxDB database **`raw_bucket`**, table (measurement)
 **`raw_measurement`**.
 
-> Tags are indexed and good for filtering/grouping (site, asset, tag name).
-> Fields hold the actual values (`value`, `quality`). If you need a new
+> Tags are indexed and good for filtering/grouping (site, asset, test case).
+> Fields hold the actual values (`value`, `tagName`). If you need a new
 > filterable dimension, add it to `tag_keys` in `telegraf.conf`.
 
 ## Try it

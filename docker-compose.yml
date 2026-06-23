@@ -10,6 +10,10 @@ services:
 
   mosquitto:
     image: eclipse-mosquitto:2.0.22
+    # The single MQTT broker for the whole pipeline. The testharness publishes
+    # here and Telegraf subscribes here. Fixed container_name so cross-stack
+    # clients on rhobot-shared can address it predictably (rtruth-mosquitto:1883).
+    container_name: rtruth-mosquitto
     # Bind to 127.0.0.1 (IPv4) only. Docker Desktop on Windows advertises an
     # IPv6 loopback binding ([::]) but resets connections through it, and the
     # browser resolves `localhost` to ::1 first — so `localhost:<port>` fails
@@ -18,7 +22,10 @@ services:
     volumes:
       - ./configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
-    networks: [rtruth-net]
+    # Also joins the shared rhobot bus so the testharness (on rhobot-shared)
+    # can publish to this broker. rtruth-net keeps internal stack traffic
+    # (Telegraf -> broker) isolated.
+    networks: [rtruth-net, rhobot-shared]
 
   influxdb:
     image: influxdb:3.10.0-core
@@ -65,3 +72,8 @@ volumes:
 
 networks:
   rtruth-net:
+  # The existing shared bus created by the rhobot/testharness stacks. Declared
+  # external so this compose attaches to it instead of creating its own.
+  rhobot-shared:
+    external: true
+    name: docker_rhobot-shared
