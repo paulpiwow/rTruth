@@ -18,7 +18,10 @@ services:
     volumes:
       - ./configs/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
-    networks: [rtruth-net]
+    networks:
+      rtruth-net:
+      rhobot-shared:                  # external net shared with the rhobot + testharness stacks
+        aliases: [rtruth-mosquitto]   # the testharness app publishes to tcp://rtruth-mosquitto:1883
 
   influxdb:
     image: influxdb:3.10.0-core
@@ -65,3 +68,9 @@ volumes:
 
 networks:
   rtruth-net:
+  # Owned by the rhobot docker stack; marked external so we attach to the
+  # existing network instead of creating our own. Lets the testharness app
+  # (also on this net) reach the broker as tcp://rtruth-mosquitto:1883.
+  rhobot-shared:
+    external: true
+    name: docker_rhobot-shared
