@@ -22,7 +22,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "time_series",
-          "rawSql": "SELECT time, value, concat(\"siteId\", '/', \"assetId\", '/', \"tagName\") AS series FROM raw_measurement WHERE \"siteId\" LIKE '$site' AND $__timeFilter(time) ORDER BY time",
+          "rawSql": "SELECT time, value, concat(\"siteName\", '/', \"assetName\", '/', \"tagName\") AS series FROM raw_measurement WHERE \"siteName\" LIKE '$site' AND $__timeFilter(time) ORDER BY time",
           "refId": "A"
         }
       ],
@@ -44,7 +44,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT count(DISTINCT \"assetId\") AS reporting_assets FROM raw_measurement WHERE \"siteId\" LIKE '$site' AND $__timeFilter(time)",
+          "rawSql": "SELECT count(DISTINCT \"assetName\") AS reporting_assets FROM raw_measurement WHERE \"siteName\" LIKE '$site' AND $__timeFilter(time)",
           "refId": "A"
         }
       ],
@@ -61,7 +61,7 @@
         {
           "datasource": { "type": "influxdb", "uid": "influxdb" },
           "format": "table",
-          "rawSql": "SELECT time, \"siteId\", \"lineId\", \"assetId\", \"tagName\", value, unit, quality FROM raw_measurement WHERE \"siteId\" LIKE '$site' AND $__timeFilter(time) ORDER BY time DESC LIMIT 100",
+          "rawSql": "SELECT time, \"siteName\", \"lineName\", \"assetName\", \"tagName\", value, unit, status FROM raw_measurement WHERE \"siteName\" LIKE '$site' AND $__timeFilter(time) ORDER BY time DESC LIMIT 100",
           "refId": "A"
         }
       ],
@@ -79,7 +79,7 @@
         "label": "Site",
         "type": "query",
         "datasource": { "type": "influxdb", "uid": "influxdb" },
-        "query": { "rawSql": "SELECT DISTINCT \"siteId\" FROM raw_measurement ORDER BY \"siteId\"" },
+        "query": { "rawSql": "SELECT DISTINCT \"siteName\" FROM raw_measurement ORDER BY \"siteName\"" },
         "refresh": 2,
         "includeAll": true,
         "allValue": "%",
